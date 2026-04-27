@@ -1,0 +1,8 @@
+README.md
+setup.py
+marin_chatbot.egg-info/PKG-INFO
+marin_chatbot.egg-info/SOURCES.txt
+marin_chatbot.egg-info/dependency_links.txt
+marin_chatbot.egg-info/entry_points.txt
+marin_chatbot.egg-info/requires.txt
+marin_chatbot.egg-info/top_level.txt

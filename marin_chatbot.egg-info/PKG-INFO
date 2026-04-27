@@ -1,0 +1,93 @@
+Metadata-Version: 2.4
+Name: marin-chatbot
+Version: 1.0.0
+Summary: A romantic AI chatbot featuring Marin Kitagawa persona with TTS capabilities
+Home-page: https://github.com/BayazidHabibSiddikee/Marin-Kitagawa-Himels-GF.git
+Author: Bayazid Habib Siddikee
+Author-email: 2208053.mte.ruet@gmail.com
+Classifier: Development Status :: 4 - Beta
+Classifier: Intended Audience :: Developers
+Classifier: License :: OSI Approved :: RUET License
+Classifier: Operating System :: OS Independent
+Classifier: Programming Language :: Python :: 3
+Classifier: Programming Language :: Python :: 3.8
+Classifier: Programming Language :: Python :: 3.9
+Classifier: Programming Language :: Python :: 3.10
+Classifier: Programming Language :: Python :: 3.11
+Requires-Python: >=3.8
+Description-Content-Type: text/markdown
+Requires-Dist: Flask>=2.0.0
+Requires-Dist: requests>=2.25.0
+Requires-Dist: Werkzeug>=2.0.0
+Provides-Extra: dev
+Requires-Dist: pytest>=6.0; extra == "dev"
+Requires-Dist: black>=21.0; extra == "dev"
+Requires-Dist: flake8>=3.8; extra == "dev"
+Dynamic: author
+Dynamic: author-email
+Dynamic: classifier
+Dynamic: description
+Dynamic: description-content-type
+Dynamic: home-page
+Dynamic: provides-extra
+Dynamic: requires-dist
+Dynamic: requires-python
+Dynamic: summary
+
+# Marin Chatbot
+
+A romantic AI chatbot featuring Marin Kitagawa persona with Text-to-Speech (TTS) capabilities.
+
+## Features
+
+- Chat interface with Marin Kitagawa (from My Dress-Up Darling)
+- Text-to-Speech using Kokoro TTS
+- Image upload and description capabilities
+- Romantic and affectionate responses
+- Vibe detection (lovely/angry) affecting TTS tone
+
+## Installation
+
+```bash
+pip install .
+```
+
+## Usage
+
+```bash
+marin-chat
+```
+
+Or run directly:
+
+```bash
+python app.py
+```
+
+Then open your browser to `http://localhost:5069`
+
+## Requirements
+
+- Python 3.8+
+- Kokoro TTS installed and available in PATH
+- GEMINI_API_KEY environment variable set for AI responses
+
+## Configuration
+
+Set your Gemini API key:
+
+```bash
+export GEMINI_API_KEY="your_api_key_here"
+```
+
+## Project Structure
+
+- `app.py` - Main Flask application
+- `marin.py` - Marin's personality and AI interaction logic
+- `image.py` - Image processing (Leo) for describing uploaded images
+- `static/` - Static files (CSS, JS, uploads, generated images)
+- `templates/` - HTML templates
+
+## License
+
+MIT
