@@ -18,7 +18,7 @@ sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from image import response as leo, generate_image
 
 # ── Config ────────────────────────────────────────────────────────────────────
-API_KEY      = "AIzaSyByr5N5yKoP1WxR5Cyal30MlhVX3Errrj0"#os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
+API_KEY      = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE") #Export from env or better to replace this line and add here like "1234567 YOur API key"
 MODEL        = "gemini-2.5-flash"
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
