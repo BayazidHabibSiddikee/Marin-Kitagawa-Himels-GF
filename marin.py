@@ -4,19 +4,27 @@ import glob
 import base64
 import requests
 import sys
+import re
+import time
+
+def extract_youtube_url(text: str):
+    """Pull YouTube URL from user message if present."""
+    pattern = r'(https?://(?:www\.)?(?:youtube\.com/watch\?v=|youtu\.be/)[\w\-]+)'
+    match = re.search(pattern, text)
+    return match.group(1) if match else None
 
 # ── Import leo ────────────────────────────────────────────────────────────────
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 from image import response as leo, generate_image
 
 # ── Config ────────────────────────────────────────────────────────────────────
-API_KEY      = os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
+API_KEY      = "AIzaSyByr5N5yKoP1WxR5Cyal30MlhVX3Errrj0"#os.environ.get("GEMINI_API_KEY", "YOUR_GEMINI_API_KEY_HERE")
 MODEL        = "gemini-2.5-flash"
 BASE_DIR     = os.path.dirname(os.path.abspath(__file__))
 HISTORY_FILE = os.path.join(BASE_DIR, "history.json")
 VIBE_FILE    = os.path.join(BASE_DIR, "vibe_state.json")
 IMAGE_DIR    = os.path.join(os.getcwd(), "static", "uploads")
-GEN_DIR      = os.path.join(os.getcwd(), "static", "generated")   # where Marin saves generated images
+GEN_DIR      = os.path.join(os.getcwd(), "static", "generated")
 
 os.makedirs(GEN_DIR, exist_ok=True)
 
@@ -38,7 +46,11 @@ reply with EXACTLY this tag on its own line (replace the description):
 __GENERATE_IMAGE__: a detailed visual description of what to generate
 
 Example: if user says "draw me a sunset beach", reply normally AND include:
-__GENERATE_IMAGE__: a beautiful golden sunset over a calm ocean beach with pink clouds"""
+__GENERATE_IMAGE__: a beautiful golden sunset over a calm ocean beach with pink clouds
+
+IMPORTANT — YouTube videos:
+If a YouTube video transcript is provided in the context, you have watched the video.
+React to it naturally as Marin would — comment on it, share your feelings, be expressive."""
 
 
 # ── Vibe helpers ──────────────────────────────────────────────────────────────
@@ -72,7 +84,7 @@ def analyze_vibe(text: str, previous_vibe: str) -> str:
     return "lovely"
 
 
-# ── Image description (analyze uploaded image) ────────────────────────────────
+# ── Image description ─────────────────────────────────────────────────────────
 def describe_image(img_path: str) -> str:
     prompt = (
         "This is a safe, general photograph or image. "
@@ -91,6 +103,60 @@ def describe_image(img_path: str) -> str:
         desc = f"an image that appears to show: {name}"
     return desc
 
+
+# ── YouTube transcript fetcher ────────────────────────────────────────────────
+def get_youtube_transcript(url: str) -> str:
+    try:
+        from youtube_transcript_api import YouTubeTranscriptApi
+
+        vid_id = None
+        if "youtu.be/" in url:
+            vid_id = url.split("youtu.be/")[1].split("?")[0]
+        elif "v=" in url:
+            vid_id = url.split("v=")[1].split("&")[0]
+
+        if not vid_id:
+            return None
+
+        ytt_api = YouTubeTranscriptApi()
+        transcript_list = ytt_api.list(vid_id)
+
+        # ── Pick first available transcript (any language) ──
+        transcript = None
+        for t in transcript_list:
+            transcript = t
+            break
+
+        if not transcript:
+            return None
+
+        original_lang = transcript.language
+        print(f"[Marin] Found transcript in: {original_lang}")
+
+        # ── Translate to English if not already English ──
+        if transcript.language_code != "en":
+            if transcript.is_translatable:
+                transcript = transcript.translate("en")
+                print(f"[Marin] Translated {original_lang} → English")
+            else:
+                print(f"[Marin] Translation not available — using {original_lang} as-is")
+
+        fetched = transcript.fetch()
+        full_text = " ".join([entry.text for entry in fetched])
+
+        if len(full_text) > 3000:
+            full_text = full_text[:3000] + "... [transcript truncated]"
+
+
+        print(f"[Marin] Transcript ready: {len(full_text)} chars")
+        return full_text
+
+    except ImportError:
+        print("[Marin] Run: pip install youtube-transcript-api")
+        return None
+    except Exception as e:
+        print(f"[Marin] Transcript fetch failed: {e}")
+        return None
 
 # ── Main response generator ───────────────────────────────────────────────────
 def response(prompt: str):
@@ -117,6 +183,8 @@ def response(prompt: str):
     print(f"[Marin] Images found: {image_files}")
 
     final_prompt = prompt
+
+    # ── Handle uploaded images ────────────────────────────────────────────────
     if image_files:
         descriptions = []
         for img in image_files:
@@ -127,6 +195,29 @@ def response(prompt: str):
             os.remove(img)
             print(f"[Marin] Deleted: {img}")
         final_prompt = prompt + "\n\nContext from images:\n" + "\n".join(descriptions)
+
+    # ── Handle YouTube URLs ───────────────────────────────────────────────────
+    youtube_url = extract_youtube_url(prompt)
+    if youtube_url:
+        print(f"[Marin] YouTube URL detected: {youtube_url}")
+        transcript = get_youtube_transcript(youtube_url)
+        if transcript:
+            final_prompt = (
+                f"{prompt}\n\n"
+                f"[YouTube video transcript from {youtube_url}]:\n"
+                f"{transcript}\n"
+                f"[End of transcript]"
+            )
+            print("[Marin] Transcript injected into prompt.")
+        else:
+            # No transcript available — tell Marin she couldn't watch it
+            final_prompt = (
+                f"{prompt}\n\n"
+                f"[Note: The user shared a YouTube link ({youtube_url}) "
+                f"but the transcript is unavailable. "
+                f"Tell the user you couldn't access the video content and ask them to describe it to you.]"
+            )
+            print("[Marin] No transcript — fallback message injected.")
 
     # ── Build Gemini contents ─────────────────────────────────────────────────
     role_map = {"assistant": "model", "user": "user"}
@@ -167,7 +258,7 @@ def response(prompt: str):
 
     display_reply = "\n".join(clean_reply).strip()
 
-    # Yield the text reply first
+    # Yield the text reply
     chunk_size = 20
     for i in range(0, len(display_reply), chunk_size):
         yield display_reply[i:i+chunk_size]
@@ -175,11 +266,9 @@ def response(prompt: str):
     # Generate image if requested
     if gen_prompt:
         print(f"[Marin] Generating image: {gen_prompt}")
-        import time
         save_path = os.path.join(GEN_DIR, f"marin_gen_{int(time.time())}.png")
         result_path = generate_image(gen_prompt, save_path=save_path)
         if result_path:
-            # Send image path as special token for app.py to serve
             rel_path = os.path.relpath(result_path, os.getcwd()).replace("\\", "/")
             yield f"\n__GENERATED_IMAGE__:{rel_path}"
             print(f"[Marin] Image ready: {rel_path}")
